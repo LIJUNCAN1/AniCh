@@ -1092,6 +1092,30 @@ class BangumiVodPageController extends PlayerController
   }
 
   @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
+    if (state == AppLifecycleState.paused || state == AppLifecycleState.inactive) {
+      if (player.state.playing && !leave.value && Platform.isAndroid) {
+        enablePIP();
+      }
+    }
+  }
+
+  Future<void> handleBack() async {
+    if (fullScreenState.value) {
+      exitFull();
+      return;
+    }
+    if (player.state.playing && !leave.value && Platform.isAndroid) {
+      if (await pip.isPipAvailable) {
+        await enablePIP();
+        return;
+      }
+    }
+    Get.back();
+  }
+
+  @override
   void onClose() {
     WidgetsBinding.instance.removeObserver(this);
     danmakuController = null;

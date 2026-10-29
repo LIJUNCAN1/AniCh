@@ -412,14 +412,43 @@ Widget buildFullControls(
             offstage: !controller.showGestureTip.value,
             child: Center(
               child: Container(
-                padding: const EdgeInsets.all(12),
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                 decoration: BoxDecoration(
-                  color: Colors.grey.shade900,
+                  color: Colors.black.withOpacity(0.75),
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: Text(
-                  controller.gestureTipText.value,
-                  style: const TextStyle(fontSize: 18, color: Colors.white),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      controller.gestureTipType.value == 'brightness'
+                          ? Icons.brightness_6
+                          : Icons.volume_up,
+                      color: Colors.white,
+                      size: 22,
+                    ),
+                    const SizedBox(width: 10),
+                    SizedBox(
+                      width: 80,
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(4),
+                        child: LinearProgressIndicator(
+                          value: controller.gestureTipValue.value,
+                          backgroundColor: Colors.white24,
+                          valueColor: const AlwaysStoppedAnimation<Color>(Colors.white),
+                          minHeight: 6,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Text(
+                      controller.gestureTipText.value,
+                      style: const TextStyle(
+                          fontSize: 14,
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold),
+                    ),
+                  ],
                 ),
               ),
             ),
@@ -578,7 +607,22 @@ Widget buildControls(
               ),
               child: Row(
                 children: [
-                  AppStyle.hGap12,
+                  IconButton(
+                    onPressed: () async {
+                      if (controller.player.state.playing && Platform.isAndroid) {
+                        if (await controller.pip.isPipAvailable) {
+                          await controller.enablePIP();
+                          return;
+                        }
+                      }
+                      Get.back();
+                    },
+                    icon: const Icon(
+                      Icons.arrow_back,
+                      color: Colors.white,
+                      size: 24,
+                    ),
+                  ),
                   Expanded(
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
@@ -658,7 +702,7 @@ Widget buildControls(
           () => AnimatedPositioned(
             left: 0,
             right: 0,
-            bottom: controller.showControlsState.value ? 0 : -75,
+            bottom: controller.showControlsState.value ? 0 : -85,
             duration: const Duration(milliseconds: 200),
             child: Container(
               decoration: const BoxDecoration(
@@ -672,18 +716,42 @@ Widget buildControls(
                 ),
               ),
               child: Column(
-                mainAxisAlignment: MainAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                mainAxisAlignment: MainAxisAlignment.end,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Container(
-                    padding: const EdgeInsets.only(left: 10, right: 10),
-                    child: const MaterialPositionIndicator(
-                      style: TextStyle(color: Colors.white),
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const MaterialPositionIndicator(
+                          style: TextStyle(color: Colors.white, fontSize: 12),
+                        ),
+                        Offstage(
+                          offstage: width < 350,
+                          child: TextButton(
+                            style: TextButton.styleFrom(
+                              padding: EdgeInsets.zero,
+                              minimumSize: const Size(50, 24),
+                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                            ),
+                            onPressed: () {
+                              controller.showPlayUrlsSheet();
+                            },
+                            child: Text(
+                              controller.currentLineInfo.value,
+                              style: const TextStyle(
+                                  color: Colors.white70, fontSize: 12),
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                   Container(
-                    padding: const EdgeInsets.only(left: 10, right: 10),
-                    height: 5,
+                    padding: const EdgeInsets.symmetric(horizontal: 10),
+                    height: 10,
                     child: diyControlsTheme(const MaterialSeekBar()),
                   ),
                   Row(
@@ -725,39 +793,11 @@ Widget buildControls(
                         icon: danmakuSettingIcon,
                       ),
                       Expanded(
-                          child: Center(
-                        child: Row(
-                          children: [
-                            buildSendDanmakuButton(videoState, controller)
-                          ],
-                        ),
-                      )),
-                      Visibility(
-                        visible: !Platform.isAndroid && !Platform.isIOS,
-                        child: IconButton(
-                          key: volumeButtonkey,
-                          onPressed: () {
-                            controller.showVolumeSlider(
-                              volumeButtonkey.currentContext!,
-                            );
-                          },
-                          icon: const Icon(
-                            Icons.volume_down,
-                            size: 24,
-                            color: Colors.white,
-                          ),
-                        ),
-                      ),
-                      Offstage(
-                        offstage: width < 350, //isPortrait,
-                        child: TextButton(
-                          onPressed: () {
-                            controller.showPlayUrlsSheet();
-                          },
-                          child: Text(
-                            controller.currentLineInfo.value,
-                            style: const TextStyle(
-                                color: Colors.white, fontSize: 15),
+                        child: Center(
+                          child: Row(
+                            children: [
+                              buildSendDanmakuButton(videoState, controller)
+                            ],
                           ),
                         ),
                       ),
@@ -782,14 +822,43 @@ Widget buildControls(
             offstage: !controller.showGestureTip.value,
             child: Center(
               child: Container(
-                padding: const EdgeInsets.all(12),
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                 decoration: BoxDecoration(
-                  color: Colors.grey.shade900,
+                  color: Colors.black.withOpacity(0.75),
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: Text(
-                  controller.gestureTipText.value,
-                  style: const TextStyle(fontSize: 18, color: Colors.white),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      controller.gestureTipType.value == 'brightness'
+                          ? Icons.brightness_6
+                          : Icons.volume_up,
+                      color: Colors.white,
+                      size: 22,
+                    ),
+                    const SizedBox(width: 10),
+                    SizedBox(
+                      width: 80,
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(4),
+                        child: LinearProgressIndicator(
+                          value: controller.gestureTipValue.value,
+                          backgroundColor: Colors.white24,
+                          valueColor: const AlwaysStoppedAnimation<Color>(Colors.white),
+                          minHeight: 6,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Text(
+                      controller.gestureTipText.value,
+                      style: const TextStyle(
+                          fontSize: 14,
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold),
+                    ),
+                  ],
                 ),
               ),
             ),

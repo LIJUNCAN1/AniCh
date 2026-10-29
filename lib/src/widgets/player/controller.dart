@@ -72,6 +72,11 @@ mixin PlayerStateMixin on PlayerMixin {
   // 手势Tip文本
   RxString gestureTipText = ''.obs;
 
+  // 手势Tip类型 ('brightness' | 'volume') 与当前比例 (0.0 - 1.0)
+  RxString gestureTipType = ''.obs;
+  RxDouble gestureTipValue = 0.0.obs;
+  Timer? hideGestureTipTimer;
+
   // 显示提示底部Tip
   RxBool showBottomTip = false.obs;
 
@@ -563,28 +568,37 @@ mixin PlayerGestureControlMixin
       return;
     }
 
-    final dy = details.globalPosition.dy;
-    // 开始位置必须是中间2/4的位置
-    if (dy < Get.height * 0.25 || dy > Get.height * 0.75) {
-      return;
-    }
-
-    verStartPosition = dy;
+    verStartPosition = details.globalPosition.dy;
     leftVerticalDrag = details.globalPosition.dx < Get.width / 2;
 
-    throttle = DelayedThrottle(200);
+    throttle = DelayedThrottle(100);
 
     if (!Platform.isAndroid && !Platform.isIOS) {
       return;
     }
     verticalDragging = true;
+    hideGestureTipTimer?.cancel();
+
+    if (leftVerticalDrag) {
+      gestureTipType.value = 'brightness';
+      try {
+        _currentBrightness = await screenBrightness.current;
+      } catch (_) {
+        _currentBrightness = 0.5;
+      }
+      gestureTipValue.value = _currentBrightness;
+      gestureTipText.value = '亮度 ${(_currentBrightness * 100).toInt()}%';
+    } else {
+      gestureTipType.value = 'volume';
+      try {
+        _currentVolume = await PerfectVolumeControl.volume;
+      } catch (_) {
+        _currentVolume = 0.5;
+      }
+      gestureTipValue.value = _currentVolume;
+      gestureTipText.value = '音量 ${(_currentVolume * 100).toInt()}%';
+    }
     showGestureTip.value = true;
-    if (Platform.isAndroid || Platform.isIOS) {
-      _currentVolume = await PerfectVolumeControl.volume;
-    }
-    if (Platform.isAndroid || Platform.isIOS || Platform.isMacOS) {
-      _currentBrightness = await screenBrightness.current;
-    }
   }
 
   // 竖向手势更新
@@ -592,50 +606,38 @@ mixin PlayerGestureControlMixin
     if (lockControlsState.value && fullScreenState.value) {
       return;
     }
-    if (verticalDragging == false) return;
+    if (!verticalDragging) return;
     if (!Platform.isAndroid && !Platform.isIOS) {
       return;
     }
-    //String text = '';
-    //double value = 0.0;
 
-    Log.logPrint('$verStartPosition/${e.globalPosition.dy}');
+    final totalHeight = fullScreenState.value ? (Get.height * 0.6) : 180.0;
+    final delta = (verStartPosition - e.globalPosition.dy) / totalHeight;
 
     if (leftVerticalDrag) {
-      setGestureBrightness(e.globalPosition.dy);
+      final seek = (_currentBrightness + delta).clamp(0.0, 1.0);
+      try {
+        screenBrightness.setScreenBrightness(seek);
+      } catch (_) {}
+      gestureTipType.value = 'brightness';
+      gestureTipValue.value = seek;
+      gestureTipText.value = '亮度 ${(seek * 100).toInt()}%';
     } else {
-      setGestureVolume(e.globalPosition.dy);
+      final seek = (_currentVolume + delta).clamp(0.0, 1.0);
+      int volume = _convertVolume((seek * 100).round());
+      if (volume != lastVolume) {
+        lastVolume = volume;
+        gestureTipType.value = 'volume';
+        gestureTipValue.value = volume / 100.0;
+        gestureTipText.value = '音量 $volume%';
+        throttle?.invoke(() async => await _realSetVolume(volume));
+      }
     }
   }
 
   int lastVolume = -1; // it's ok to be -1
 
-  void setGestureVolume(double dy) {
-    double value = 0.0;
-    double seek;
-    if (dy > verStartPosition) {
-      value = ((dy - verStartPosition) / (Get.height * 0.5));
-
-      seek = _currentVolume - value;
-      if (seek < 0) {
-        seek = 0;
-      }
-    } else {
-      value = ((dy - verStartPosition) / (Get.height * 0.5));
-      seek = value.abs() + _currentVolume;
-      if (seek > 1) {
-        seek = 1;
-      }
-    }
-    int volume = _convertVolume((seek * 100).round());
-    if (volume == lastVolume) {
-      return;
-    }
-    lastVolume = volume;
-    // update UI outside throttle to make it more fluent
-    gestureTipText.value = '音量 $volume%';
-    throttle?.invoke(() async => await _realSetVolume(volume));
-  }
+  void setGestureVolume(double dy) {}
 
   // 0 to 100, 5 step each
   int _convertVolume(int volume) {
@@ -643,35 +645,10 @@ mixin PlayerGestureControlMixin
   }
 
   Future<void> _realSetVolume(int volume) async {
-    Log.logPrint(volume);
     return await PerfectVolumeControl.setVolume(volume / 100);
   }
 
-  void setGestureBrightness(double dy) {
-    double value = 0.0;
-    if (dy > verStartPosition) {
-      value = ((dy - verStartPosition) / (Get.height * 0.5));
-
-      var seek = _currentBrightness - value;
-      if (seek < 0) {
-        seek = 0;
-      }
-      screenBrightness.setScreenBrightness(seek);
-
-      gestureTipText.value = '亮度 ${(seek * 100).toInt()}%';
-      Log.logPrint(value);
-    } else {
-      value = ((dy - verStartPosition) / (Get.height * 0.5));
-      var seek = value.abs() + _currentBrightness;
-      if (seek > 1) {
-        seek = 1;
-      }
-
-      screenBrightness.setScreenBrightness(seek);
-      gestureTipText.value = '亮度 ${(seek * 100).toInt()}%';
-      Log.logPrint(value);
-    }
-  }
+  void setGestureBrightness(double dy) {}
 
   // 竖向手势完成
   void onVerticalDragEnd(DragEndDetails details) async {
@@ -681,7 +658,10 @@ mixin PlayerGestureControlMixin
     throttle = null;
     verticalDragging = false;
     leftVerticalDrag = false;
-    showGestureTip.value = false;
+    hideGestureTipTimer?.cancel();
+    hideGestureTipTimer = Timer(const Duration(milliseconds: 800), () {
+      showGestureTip.value = false;
+    });
   }
 
   bool horizontalDragging = false;

@@ -67,7 +67,14 @@ class BangumiVodPageState extends State<BangumiVodPage> {
                 ),
               );
             } else {
-              return buildPageUI(controller);
+              return PopScope(
+                canPop: false,
+                onPopInvoked: (didPop) async {
+                  if (didPop) return;
+                  await controller.handleBack();
+                },
+                child: buildPageUI(controller),
+              );
             }
           });
           if (!Platform.isAndroid) {
@@ -276,7 +283,7 @@ class BangumiVodPageState extends State<BangumiVodPage> {
                     NavItem(
                         icon: Icons.arrow_back,
                         title: '返回',
-                        onTap: () => Get.back()),
+                        onTap: () => controller.handleBack()),
                   ],
                 ),
               )
@@ -314,7 +321,7 @@ class BangumiVodPageState extends State<BangumiVodPage> {
         Video(
           key: controller.globalPlayerKey,
           controller: controller.videoController,
-          pauseUponEnteringBackgroundMode: true,
+          pauseUponEnteringBackgroundMode: false,
           resumeUponEnteringForegroundMode: true,
           controls: (state) {
             return playerControls(state, controller);
